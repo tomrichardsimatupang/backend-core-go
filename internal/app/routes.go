@@ -10,6 +10,7 @@ import (
 
 	"backend-core-go/internal/config"
 	"backend-core-go/internal/features/auth"
+	"backend-core-go/internal/features/post"
 	"backend-core-go/internal/features/product"
 	"backend-core-go/internal/features/rbac"
 	"backend-core-go/internal/features/user"
@@ -37,6 +38,7 @@ func registerRoutes(r *gin.Engine, cfg config.Config, db *pgxpool.Pool) {
 	rbac.RegisterRoutes(protected, rbacSvc, authz)
 	user.RegisterRoutes(protected, db, authz)
 	product.RegisterRoutes(protected, db, authz)
+	post.RegisterRoutes(protected, db, authz)
 }
 
 func healthHandler(db *pgxpool.Pool) gin.HandlerFunc {

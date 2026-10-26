@@ -25,6 +25,7 @@ make migrate-up     # jalankan semua migrasi
 make migrate-down   # rollback 1 migrasi
 make migrate-new name=create_xxx   # buat file migrasi baru
 make seed           # sinkronisasi permission & role default
+make seed-demo      # + 5 user & artikel contoh (password: password123)
 docker compose up -d postgres      # Postgres lokal
 docker compose up -d --build      # full stack: postgres → migrate → api (:8080)
 docker compose run --rm seed       # seed di dalam compose (SEED_ADMIN_EMAIL dari .env)
@@ -40,7 +41,8 @@ internal/
 ├── app/
 │   ├── server.go               # setup Gin, middleware global, graceful shutdown
 │   ├── routes.go               # wiring semua feature + middleware auth/rbac
-│   └── permissions.go          # daftar Permissions semua feature → rbac.AllPermissions
+│   ├── permissions.go          # daftar Permissions semua feature → rbac.AllPermissions
+│   └── roles.go                # role default CMS (admin, editor, author, subscriber)
 ├── config/config.go            # baca env
 ├── platform/                   # infrastruktur
 │   ├── database/
@@ -69,6 +71,7 @@ internal/
     │   ├── seeder.go
     │   ├── handler.go, routes.go
     ├── user/
+    ├── post/                   # CMS/Blog: draft → publish, ownership penulis
     └── product/
 migrations/                     # NNNNNN_nama.up.sql / .down.sql
 ```

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"backend-core-go/internal/features/post"
 	"backend-core-go/internal/features/product"
 	"backend-core-go/internal/features/rbac"
 	"backend-core-go/internal/features/user"
@@ -13,5 +14,6 @@ func Permissions() ([]string, error) {
 		rbac.Permissions,
 		user.Permissions,
 		product.Permissions,
+		post.Permissions,
 	)
 }

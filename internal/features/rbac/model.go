@@ -22,3 +22,10 @@ type RoleWithPermissions struct {
 	Role
 	Permissions []string
 }
+
+// RoleSeed adalah role default yang dikelola kode dan disinkronkan seeder.
+type RoleSeed struct {
+	Name        string
+	Description string
+	Permissions []string
+}

@@ -1,8 +1,10 @@
 // Command seed menyinkronkan permission & role default (make seed).
+// Dengan flag -demo, juga membuat user dan artikel contoh (make seed-demo).
 package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 
@@ -14,13 +16,16 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	demo := flag.Bool("demo", false, "buat user & artikel contoh untuk kasus CMS/Blog")
+	flag.Parse()
+
+	if err := run(*demo); err != nil {
 		slog.Error("seed failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(demo bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -41,11 +46,16 @@ func run() error {
 	}
 
 	seeder := rbac.NewSeeder(rbac.NewRepository(pool), database.NewTransactor(pool), log)
-	if err := seeder.Sync(ctx, perms); err != nil {
+	if err := seeder.Sync(ctx, perms, app.DefaultRoles()); err != nil {
 		return err
 	}
 	if cfg.SeedAdminEmail != "" {
-		return seeder.AssignSuperAdmin(ctx, cfg.SeedAdminEmail)
+		if _, err := seeder.AssignRole(ctx, cfg.SeedAdminEmail, rbac.SuperAdminRole); err != nil {
+			return err
+		}
+	}
+	if demo {
+		return seedDemo(ctx, pool, seeder, log)
 	}
 	return nil
 }

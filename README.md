@@ -5,7 +5,8 @@ REST API berbasis Go dengan arsitektur **feature-first**, autentikasi **JWT**, d
 - **Go** 1.26+ · **Gin** · **PostgreSQL** (pgx v5 + Squirrel, tanpa ORM)
 - Migrasi SQL dengan **golang-migrate**
 - Logging terstruktur (`slog`) dengan `request_id` di setiap request
-- Fitur bawaan: `auth`, `rbac`, `user`, `product` (contoh ownership check)
+- Fitur bawaan: `auth`, `rbac`, `user`, `post` (CMS/Blog), `product` (contoh ownership check)
+- Role default CMS: `super_admin`, `admin`, `editor`, `author`, `subscriber` + [data contoh](#data-contoh-cmsblog)
 
 Panduan arsitektur dan konvensi kode ada di [CLAUDE.md](CLAUDE.md).
 
@@ -17,6 +18,7 @@ Panduan arsitektur dan konvensi kode ada di [CLAUDE.md](CLAUDE.md).
 - [Menjalankan tanpa Docker](#menjalankan-tanpa-docker)
 - [Konfigurasi (Environment Variable)](#konfigurasi-environment-variable)
 - [Langkah Pertama: Membuat Admin](#langkah-pertama-membuat-admin)
+- [Data Contoh (CMS/Blog)](#data-contoh-cmsblog)
 - [Dokumentasi REST API](#dokumentasi-rest-api)
   - [Format Response](#format-response)
   - [Autentikasi](#autentikasi)
@@ -51,6 +53,7 @@ Urutan start diatur otomatis: `postgres` (tunggu healthy) → `migrate` (jalanka
 | `docker compose up -d --build` | Build ulang image & jalankan stack |
 | `docker compose logs -f api` | Lihat log API |
 | `docker compose run --rm seed` | Sinkronisasi permission & role default |
+| `docker compose run --rm seed -demo` | Seperti di atas + buat 5 user & artikel contoh |
 | `docker compose down` | Stop stack (data database tetap tersimpan) |
 | `docker compose down -v` | Stop stack **dan hapus data** database |
 
@@ -139,6 +142,53 @@ curl -X POST localhost:8080/api/v1/auth/login \
 Seed aman dijalankan berulang kali. Jalankan ulang setiap ada permission baru di kode.
 
 > Role `super_admin` selalu mendapat **semua** permission dan tidak bisa diubah/dihapus lewat API.
+
+---
+
+## Data Contoh (CMS/Blog)
+
+Untuk mencoba RBAC dengan cepat, jalankan seeder demo:
+
+```bash
+docker compose run --rm seed -demo   # dengan Docker
+make seed-demo                       # tanpa Docker
+```
+
+Seeder demo aman dijalankan berulang kali (user/artikel yang sudah ada dilewati). Semua user memakai password **`password123`**. Hanya untuk development.
+
+| User | Email | Role | Yang bisa dilakukan |
+| --- | --- | --- | --- |
+| Super Admin | `superadmin@example.com` | `super_admin` | Semua hal, termasuk membuat role & mengatur permission |
+| Andi Admin | `admin@example.com` | `admin` | Kelola user & seluruh konten; hanya **melihat** role |
+| Eka Editor | `editor@example.com` | `editor` | Lihat semua draft, edit artikel siapa pun, publish/unpublish |
+| Ayu Author | `author@example.com` | `author` | Tulis artikel; edit/hapus artikel **milik sendiri**; tidak bisa publish |
+| Sari Subscriber | `subscriber@example.com` | `subscriber` | Hanya membaca artikel yang sudah dipublish |
+
+Artikel contoh:
+
+| Judul | Penulis | Status |
+| --- | --- | --- |
+| Selamat Datang di Blog Kami | editor | published |
+| Belajar Go untuk Pemula | author | published |
+| Tips Query Builder dengan Squirrel | author | draft (subscriber tidak bisa melihatnya) |
+
+**Alur editorial:** author menulis artikel (selalu mulai sebagai `draft`) → editor mereview & mengedit → editor `publish` → artikel terlihat oleh subscriber.
+
+**Matriks permission role default**
+
+| Permission | admin | editor | author | subscriber |
+| --- | :---: | :---: | :---: | :---: |
+| `post:read` | ✓ | ✓ | ✓ | ✓ |
+| `post:create` | ✓ | ✓ | ✓ | |
+| `post:update` / `post:delete` (milik sendiri) | ✓ | ✓ | ✓ | |
+| `post:publish` | ✓ | ✓ | | |
+| `post:manage` (milik siapa pun) | ✓ | ✓ | | |
+| `user:*` | ✓ | | | |
+| `product:*` | ✓ | | | |
+| `role:read` | ✓ | | | |
+| `role:manage` | | | | |
+
+Role default didefinisikan di [`internal/app/roles.go`](internal/app/roles.go) dan disinkronkan oleh `seed`. Perubahan permission pada role-role ini lewat API akan **ditimpa kembali** saat seed dijalankan. Untuk role custom, buat role baru lewat API.
 
 ---
 
@@ -293,6 +343,73 @@ Response user:
 
 </details>
 
+#### Posts (CMS/Blog)
+
+| Method | Path | Permission | Keterangan |
+| --- | --- | --- | --- |
+| `GET` | `/posts` | `post:read` | List artikel (paginated) |
+| `POST` | `/posts` | `post:create` | Tulis artikel (selalu `draft`, penulis = user login) |
+| `GET` | `/posts/:id` | `post:read` | Detail artikel |
+| `PUT` | `/posts/:id` | `post:update` / `post:manage` | Ubah artikel |
+| `DELETE` | `/posts/:id` | `post:delete` / `post:manage` | Hapus artikel |
+| `POST` | `/posts/:id/publish` | `post:publish` | Publish artikel |
+| `POST` | `/posts/:id/unpublish` | `post:publish` | Kembalikan artikel ke draft |
+
+**Aturan visibilitas & kepemilikan:**
+
+- Tanpa `post:manage`, user hanya melihat artikel `published` + draft **miliknya sendiri**. Draft milik orang lain dianggap tidak ada (`404`).
+- `post:update` / `post:delete` hanya berlaku untuk artikel milik sendiri; artikel orang lain butuh `post:manage` (selain itu `403 POST_FORBIDDEN`).
+- Slug dibuat otomatis dari judul saat artikel dibuat dan **tidak berubah** walau judul diedit. Judul yang menghasilkan slug sama → `409 SLUG_TAKEN`.
+- Publish ulang mempertahankan `published_at` awal.
+
+Query tambahan pada `GET /posts`:
+
+| Query | Keterangan |
+| --- | --- |
+| `q` | Cari berdasarkan judul (case-insensitive) |
+| `status` | `draft` atau `published` |
+| `author_id` | Filter berdasarkan penulis |
+
+<details>
+<summary>Contoh request & response</summary>
+
+`POST /posts`
+
+```json
+{ "title": "Belajar Go untuk Pemula", "body": "Isi artikel..." }
+```
+
+| Field | Aturan |
+| --- | --- |
+| `title` | wajib, 3–200 karakter, harus mengandung huruf/angka |
+| `body` | opsional, maks 100.000 karakter |
+
+`PUT /posts/:id`: semua field opsional.
+
+```json
+{ "title": "Belajar Go untuk Pemula (Revisi)", "body": "Isi baru..." }
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "id": 2,
+    "author_id": 4,
+    "title": "Belajar Go untuk Pemula",
+    "slug": "belajar-go-untuk-pemula",
+    "body": "Isi artikel...",
+    "status": "published",
+    "published_at": "2026-10-26T05:00:00Z",
+    "created_at": "2026-10-26T04:55:00Z",
+    "updated_at": "2026-10-26T05:00:00Z"
+  }
+}
+```
+
+</details>
+
 #### Products
 
 | Method | Path | Permission | Keterangan |
@@ -416,14 +533,17 @@ curl -X POST localhost:8080/api/v1/rbac/users/3/roles \
 | 401 | `INVALID_TOKEN` | Token tidak valid atau kedaluwarsa |
 | 401 | `INVALID_CREDENTIALS` | Email atau password salah |
 | 403 | `FORBIDDEN` | Tidak punya permission yang dibutuhkan |
+| 403 | `POST_FORBIDDEN` | Mengubah artikel milik orang lain tanpa `post:manage` |
 | 403 | `PRODUCT_FORBIDDEN` | Mengubah produk milik orang lain tanpa `product:manage` |
 | 403 | `CANNOT_DELETE_SELF` | Menghapus akun sendiri |
 | 403 | `PROTECTED_ROLE` | Mengubah/menghapus role `super_admin` |
-| 404 | `USER_NOT_FOUND` / `PRODUCT_NOT_FOUND` / `ROLE_NOT_FOUND` | Data tidak ditemukan |
+| 404 | `USER_NOT_FOUND` / `POST_NOT_FOUND` / `PRODUCT_NOT_FOUND` / `ROLE_NOT_FOUND` | Data tidak ditemukan |
 | 404 | `ROUTE_NOT_FOUND` | Endpoint tidak ada |
 | 409 | `EMAIL_TAKEN` | Email sudah terdaftar |
 | 409 | `ROLE_EXISTS` | Nama role sudah dipakai |
+| 409 | `SLUG_TAKEN` | Sudah ada artikel dengan judul/slug yang sama |
 | 422 | `VALIDATION_ERROR` | Field request tidak valid (lihat `details`) |
+| 422 | `INVALID_TITLE` | Judul tidak mengandung huruf/angka |
 | 422 | `UNKNOWN_PERMISSION` | Permission yang dikirim tidak ada |
 | 500 | `INTERNAL_ERROR` | Kesalahan server (detail hanya dicatat di log) |
 | 503 | `UNHEALTHY` | Database tidak dapat dijangkau (`/healthz`) |
@@ -438,6 +558,12 @@ curl -X POST localhost:8080/api/v1/rbac/users/3/roles \
 | `user:create` | Buat user |
 | `user:update` | Ubah user mana pun |
 | `user:delete` | Hapus user |
+| `post:read` | Baca artikel published + draft milik sendiri |
+| `post:create` | Tulis artikel (sebagai draft) |
+| `post:update` | Ubah artikel **milik sendiri** |
+| `post:delete` | Hapus artikel **milik sendiri** |
+| `post:publish` | Publish/unpublish artikel siapa pun |
+| `post:manage` | Lihat semua draft, ubah/hapus artikel **milik siapa pun** |
 | `product:read` | Lihat produk |
 | `product:create` | Buat produk |
 | `product:update` | Ubah produk **milik sendiri** |
@@ -461,17 +587,18 @@ curl -X POST localhost:8080/api/v1/rbac/users/3/roles \
 | `make migrate-down` | Rollback 1 migrasi |
 | `make migrate-new name=create_xxx` | Buat file migrasi baru |
 | `make seed` | Sinkronisasi permission & role default |
+| `make seed-demo` | Seperti di atas + 5 user & artikel contoh |
 
 ### Struktur Singkat
 
 ```
 cmd/api            entry point API
-cmd/seed           sinkronisasi permission & role
-internal/app       server, wiring route, daftar permission
+cmd/seed           sinkronisasi permission & role (+ data demo dengan -demo)
+internal/app       server, wiring route, daftar permission, role default
 internal/config    konfigurasi dari env
 internal/platform  database (pgxpool, transaksi), logger
 internal/shared    httpx (response/error), middleware, pagination, authctx, apperr
-internal/features  auth, rbac, user, product — satu folder per fitur
+internal/features  auth, rbac, user, post, product — satu folder per fitur
 migrations         file SQL up/down
 ```
 

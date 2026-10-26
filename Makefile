@@ -4,7 +4,7 @@ export
 MIGRATE ?= migrate
 MIGRATIONS_DIR := migrations
 
-.PHONY: run dev build test lint tidy migrate-up migrate-down migrate-new seed
+.PHONY: run dev build test lint tidy migrate-up migrate-down migrate-new seed seed-demo
 
 run:
 	go run ./cmd/api
@@ -36,3 +36,6 @@ migrate-new:
 
 seed:
 	go run ./cmd/seed
+
+seed-demo:
+	go run ./cmd/seed -demo

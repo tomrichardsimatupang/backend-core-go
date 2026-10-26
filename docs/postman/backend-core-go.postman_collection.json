@@ -1,0 +1,576 @@
+{
+  "info": {
+    "name": "backend-core-go",
+    "description": "REST API backend-core-go.\n\nAlur cepat dengan data demo:\n1. Jalankan `docker compose run --rm seed -demo` (atau `make seed-demo`).\n2. Ubah variabel {{email}} ke salah satu user demo, lalu jalankan Auth > Login. Token otomatis disimpan ke {{token}}.\n   superadmin@example.com, admin@example.com, editor@example.com, author@example.com, subscriber@example.com (password: password123)\n3. Semua request lain otomatis memakai Bearer {{token}}. Ganti user = ubah {{email}} lalu Login ulang.\n\nUbah {{hostUrl}} dan {{baseUrl}} di tab Variables bila API tidak berjalan di localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "hostUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "email",
+      "value": "superadmin@example.com"
+    },
+    {
+      "key": "password",
+      "value": "password123"
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "roleId",
+      "value": "2"
+    },
+    {
+      "key": "productId",
+      "value": "1"
+    },
+    {
+      "key": "postId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": "{{hostUrl}}/healthz"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('token', pm.response.json().data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('token', pm.response.json().data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update me",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin Baru\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List users (user:read)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&per_page=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get user (user:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Create user (user:create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi\",\n  \"email\": \"budi@example.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update user (user:update)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete user (user:delete)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts (CMS/Blog)",
+      "item": [
+        {
+          "name": "List posts (post:read)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts?page=1&per_page=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Cari berdasarkan judul",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "description": "draft | published",
+                  "disabled": true
+                },
+                {
+                  "key": "author_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get post (post:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          }
+        },
+        {
+          "name": "Create post (post:create)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/posts",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Artikel Baru dari Postman\",\n  \"body\": \"Isi artikel...\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('postId', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update post (penulis, atau post:manage)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/posts/{{postId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Artikel Baru dari Postman (Revisi)\",\n  \"body\": \"Isi yang sudah direvisi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Publish post (post:publish)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/posts/{{postId}}/publish"
+          }
+        },
+        {
+          "name": "Unpublish post (post:publish)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/posts/{{postId}}/unpublish"
+          }
+        },
+        {
+          "name": "Delete post (penulis, atau post:manage)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List products (product:read)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1&per_page=20&q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Cari berdasarkan nama"
+                },
+                {
+                  "key": "owner_id",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get product (product:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Create product (product:create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('productId', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kopi Arabika\",\n  \"description\": \"250 gram\",\n  \"price\": 85000\n}"
+            }
+          }
+        },
+        {
+          "name": "Update product (owner, atau product:manage)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/products/{{productId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 90000\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete product (owner, atau product:manage)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/products/{{productId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "RBAC",
+      "item": [
+        {
+          "name": "List permissions (role:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rbac/permissions"
+          }
+        },
+        {
+          "name": "List roles (role:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rbac/roles"
+          }
+        },
+        {
+          "name": "Get role (role:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rbac/roles/{{roleId}}"
+          }
+        },
+        {
+          "name": "Create role (role:manage)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('roleId', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rbac/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"member\",\n  \"description\": \"Bisa mengelola produk sendiri\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Set role permissions (role:manage)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rbac/roles/{{roleId}}/permissions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\"product:read\", \"product:create\", \"product:update\", \"product:delete\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete role (role:manage)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/rbac/roles/{{roleId}}"
+          }
+        },
+        {
+          "name": "User roles (role:read)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rbac/users/{{userId}}/roles"
+          }
+        },
+        {
+          "name": "Assign role to user (role:manage)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/rbac/users/{{userId}}/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_id\": {{roleId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Revoke role from user (role:manage)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/rbac/users/{{userId}}/roles/{{roleId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

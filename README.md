@@ -196,6 +196,17 @@ Role default didefinisikan di [`internal/app/roles.go`](internal/app/roles.go) d
 
 Base URL: `http://localhost:8080/api/v1`
 
+### Postman Collection
+
+Seluruh endpoint tersedia sebagai Postman collection: [`docs/postman/backend-core-go.postman_collection.json`](docs/postman/backend-core-go.postman_collection.json)
+
+1. Download file tersebut (di GitHub: buka file → tombol **Download raw file**), atau langsung pakai dari hasil `git clone`.
+2. Di Postman: **Import** → pilih file tersebut.
+3. Jalankan `seed -demo`, lalu **Auth › Login**. Token otomatis tersimpan dan dipakai semua request.
+4. Untuk berganti user demo, ubah variabel collection `email` (mis. `author@example.com`) lalu Login ulang.
+
+Variabel `hostUrl` / `baseUrl` bisa diubah di tab **Variables** bila API tidak berjalan di `localhost:8080`.
+
 ### Format Response
 
 **Sukses**
@@ -594,6 +605,7 @@ curl -X POST localhost:8080/api/v1/rbac/users/3/roles \
 ```
 cmd/api            entry point API
 cmd/seed           sinkronisasi permission & role (+ data demo dengan -demo)
+docs/postman       Postman collection seluruh endpoint
 internal/app       server, wiring route, daftar permission, role default
 internal/config    konfigurasi dari env
 internal/platform  database (pgxpool, transaksi), logger

@@ -165,6 +165,7 @@ func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
 6. Daftarkan di `internal/app/routes.go` di bawah group `protected` (kecuali endpoint publik).
 7. Definisikan error domain di `errors.go` feature dengan `apperr.New(apperr.KindXxx, "KODE", "pesan")`; tambahkan mapping di `shared/httpx/errors.go` hanya jika butuh `Kind` baru.
 8. Tulis unit test service dengan mock repository.
+9. Tambahkan endpoint baru ke `docs/postman/backend-core-go.postman_collection.json` dan tabel endpoint di `README.md`.
 
 ## Response & Error
 

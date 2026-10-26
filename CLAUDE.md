@@ -26,6 +26,8 @@ make migrate-down   # rollback 1 migrasi
 make migrate-new name=create_xxx   # buat file migrasi baru
 make seed           # sinkronisasi permission & role default
 docker compose up -d postgres      # Postgres lokal
+docker compose up -d --build      # full stack: postgres → migrate → api (:8080)
+docker compose run --rm seed       # seed di dalam compose (SEED_ADMIN_EMAIL dari .env)
 ```
 
 Selalu jalankan `make test` dan `make lint` setelah mengubah kode.
